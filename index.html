@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Subscriptions & Webhook Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#FF0000',
+              dark: '#0f0f0f',
+              card: '#1f1f1f',
+              hover: '#272727'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .pulse-ring {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased text-slate-200">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-red-600 p-2 rounded-xl text-white shadow-lg shadow-red-900/30">
+          <i class="fa-brands fa-youtube text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            YT Webhook Dispatcher
+            <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-medium">Live Feed</span>
+          </h1>
+          <p class="text-xs text-slate-400">Monitor your favorite YouTube creators and trigger Webhook alerts</p>
+        </div>
+      </div>
+
+      <!-- Live Monitoring Status Badge & OAuth Sign In -->
+      <div class="flex items-center gap-3">
+        <button id="googleOAuthBtn" onclick="authenticateGoogleOAuth()" class="bg-white hover:bg-slate-100 text-slate-900 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-2 border border-slate-300">
+          <i class="fa-brands fa-google text-red-500 text-sm"></i>
+          <span id="oauthBtnText">Auto-Fetch All Subs (OAuth)</span>
+        </button>
+
+        <div id="monitorStatusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-400">
+          <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+          <span>Monitoring Idle</span>
+        </div>
+        <button id="toggleMonitorBtn" onclick="toggleMonitoring()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2">
+          <i class="fa-solid fa-play"></i> Start Monitor
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Controls & Favorites -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- API Settings Card -->
+      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-key text-red-500"></i> YouTube API Settings</span>
+          <button onclick="exportFullConfig()" title="Export Backup JSON" class="text-xs text-slate-400 hover:text-white"><i class="fa-solid fa-download mr-1"></i> Export</button>
+        </h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">YouTube Data API v3 Key</label>
+            <input type="password" id="youtubeApiKey" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Channel ID, Handle (@username), or Custom URL</label>
+            <div class="flex gap-2">
+              <input type="text" id="userChannelId" value="UCQchqkcCEDq3evCC0yKQKzw" placeholder="e.g. @mkbhd, MrBeast, or UC..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <button onclick="fetchSubscriptionsFromAPI()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap">
+                <i class="fa-solid fa-cloud-arrow-down"></i> Load API Subs
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Webhook Config Card -->
+      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-bolt text-amber-400"></i> Webhook & Alert Settings</span>
+          <button onclick="toggleAdvancedSettings()" class="text-xs text-slate-400 hover:text-amber-400"><i class="fa-solid fa-sliders"></i> Options</button>
+        </h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Webhook Target URL (Discord / Slack / Custom)</label>
+            <input type="url" id="webhookUrl" value="https://discord.com/api/webhooks/1565748100042068110/1vGcgrVBHmmRN4UHGeAMOYc26WFHMRQpSIrYARv6R0VC8qjDiJJn8ro9ahoY2LKhdFqQ" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-red-500 transition-colors">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Poll Frequency</label>
+              <select id="pollInterval" onchange="updatePollFrequency()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                <option value="60">Every 1 min</option>
+                <option value="180" selected>Every 3 mins</option>
+                <option value="300">Every 5 mins</option>
+                <option value="900">Every 15 mins</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Discord Format</label>
+              <select id="webhookFormat" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                <option value="embed" selected>Rich Embed Card</option>
+                <option value="plain">Plain Text Link</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Title Filters -->
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Keyword Title Filters (Comma-separated, optional)</label>
+            <input type="text" id="keywordFilter" placeholder="e.g. #Shorts, Review, Unboxing (Leave empty for all)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="autoCheck" checked class="rounded bg-slate-950 border-slate-800 text-red-600 focus:ring-0 focus:ring-offset-0">
+              Auto-poll feeds
+            </label>
+            <button onclick="testWebhook()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 transition">
+              <i class="fa-solid fa-paper-plane mr-1"></i> Send Test Payload
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Favorites / Watched Channels -->
+      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl flex-1 flex flex-col min-h-[300px]">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-star text-amber-400"></i> Favorite Creators
+            </h2>
+            <p class="text-xs text-slate-400">Only channels in this list will trigger webhook events</p>
+          </div>
+          <span id="favCount" class="text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-1 rounded-md">0 Favorite</span>
+        </div>
+
+        <!-- Add Manual Channel -->
+        <div class="flex gap-2 mb-4">
+          <input type="text" id="manualChannelId" placeholder="Channel ID (UC...)" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+          <button onclick="addManualChannel()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
+            <i class="fa-solid fa-plus mr-1"></i> Add
+          </button>
+        </div>
+
+        <!-- Favorites List -->
+        <div id="favoritesList" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[300px]">
+          <div class="text-center py-10 text-slate-500 text-xs">
+            No favorite creators added yet.<br>Click "Add Favorite" on any subscription channel!
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Right Column: Subscriptions & Logs -->
+    <div class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- YouTube Subscriptions Explorer -->
+      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl flex-1 flex flex-col">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-red-500"></i> Subscriptions List
+            </h2>
+            <p class="text-xs text-slate-400">Click "+ Favorite" button to track any creator</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-2">
+            <button onclick="openImportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-import"></i> Import OPML/IDs
+            </button>
+            <button onclick="fetchDemoData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Demo Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Search Bar & Filters -->
+        <div class="flex gap-2 mb-3">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+            <input type="text" id="searchSubs" oninput="renderSubscriptions()" placeholder="Search subscriptions..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+          </div>
+          <select id="subFilterType" onchange="renderSubscriptions()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-red-500">
+            <option value="all">All Channels</option>
+            <option value="favs">Favorites Only</option>
+            <option value="nonfavs">Non-Favorites</option>
+          </select>
+        </div>
+
+        <!-- Missing Subscriptions Notice Banner / Quick OAuth Bar -->
+        <div class="mb-3 p-3 bg-gradient-to-r from-red-950/60 to-slate-900 border border-red-800/50 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-red-200">
+            <i class="fa-solid fa-shield-halved text-red-400 text-sm flex-shrink-0"></i>
+            <span>YouTube hides private subscriptions from API keys. Use OAuth or Quick Import to auto-load 100% of your channels.</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="authenticateGoogleOAuth()" class="bg-white hover:bg-slate-100 text-slate-900 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition flex items-center gap-1">
+              <i class="fa-brands fa-google text-red-500"></i> Auto Load via Google
+            </button>
+            <button onclick="openImportModal()" class="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition">
+              Import Text
+            </button>
+          </div>
+        </div>
+
+        <!-- Subscription Items -->
+        <div id="subscriptionsList" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[260px] max-h-[380px]">
+          <div class="text-center py-12 text-slate-500 text-xs">
+            Click <strong>Load API Subs</strong> or <strong>Demo Data</strong> to view subscriptions.
+          </div>
+        </div>
+      </section>
+
+      <!-- Activity Logs & Webhook History Tabs -->
+      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+          <div class="flex gap-4">
+            <button id="tabBtnLog" onclick="switchConsoleTab('log')" class="text-xs font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-400 pb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-terminal"></i> Live Log
+            </button>
+            <button id="tabBtnHistory" onclick="switchConsoleTab('history')" class="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 pb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-clock-rotate-left"></i> Sent Webhooks (<span id="historyCount">0</span>)
+            </button>
+          </div>
+          <button onclick="clearCurrentConsoleTab()" class="text-xs text-slate-500 hover:text-slate-300">Clear</button>
+        </div>
+
+        <!-- Live Console View -->
+        <div id="consoleLog" class="bg-slate-950 border border-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 h-40 overflow-y-auto space-y-1">
+          <div class="text-slate-600">[System Ready] Enter YouTube API Key or Channel ID to fetch subscriptions.</div>
+        </div>
+
+        <!-- Dispatch History View (Hidden by default) -->
+        <div id="webhookHistoryLog" class="bg-slate-950 border border-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 h-40 overflow-y-auto space-y-2 hidden">
+          <div class="text-slate-600 text-center py-4">No webhooks sent yet during this session.</div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Import Modal -->
+  <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+      <button onclick="closeImportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <h3 class="text-lg font-bold text-white mb-2">Import Subscriptions</h3>
+      <p class="text-xs text-slate-400 mb-4">You can export your subscriptions XML (OPML) from Google Takeout or paste a list of YouTube Channel IDs / URL links below.</p>
+
+      <div class="space-y-4">
+        <!-- Direct Quick Method -->
+        <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+          <label class="block text-xs font-semibold text-amber-400 mb-1"><i class="fa-solid fa-bolt mr-1"></i> Quick Method: Paste YouTube Subscriptions HTML/Text</label>
+          <p class="text-[11px] text-slate-400 mb-2">Go to <a href="https://www.youtube.com/feed/channels" target="_blank" class="text-red-400 underline font-semibold">youtube.com/feed/channels</a>, select all text (Ctrl+A / Cmd+A) or copy the channel links, and paste below:</p>
+          <textarea id="rawPasteInput" rows="3" placeholder="Paste anything here containing channel names or youtube.com/@username / youtube.com/channel/UC..." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 font-mono"></textarea>
+          <button onclick="parseRawPaste()" class="mt-2 w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 rounded-lg text-xs transition">
+            Extract & Add All Channels From Text
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Option A: Upload Google Takeout OPML file</label>
+          <input type="file" id="opmlFileInput" accept=".xml,.opml" onchange="handleOPMLFile(event)" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-500 cursor-pointer">
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-800"></div>
+          <span class="flex-shrink mx-4 text-slate-600 text-xs uppercase">or</span>
+          <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Option B: Paste YouTube Channel IDs or URLs (One per line)</label>
+          <textarea id="channelListInput" rows="4" placeholder="UCX6OQ3DkcsbYNE6H8uQQuVA&#10;https://www.youtube.com/channel/UC-lHJZR3Gqxm24_Vd_AJ5Yw" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono"></textarea>
+        </div>
+
+        <button onclick="processChannelListInput()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+          Parse & Add Channels
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+    <span id="toastMessage" class="text-xs font-medium">Notification message</span>
+  </div>
+
+  <script>
+    // State management
+    let subscriptions = [];
+    let favorites = [];
+    let seenVideoIds = new Set();
+    let webhookHistory = [];
+    let isMonitoring = false;
+    let monitorInterval = null;
+    let activeConsoleTab = 'log';
+    let oauthAccessToken = null;
+
+    const DEFAULT_API_KEY = "AIzaSyDp-bEaYAfGDtZmpDXSWUqfEtqAW7OPyBA";
+    const DEFAULT_WEBHOOK_URL = "https://discord.com/api/webhooks/1565748100042068110/1vGcgrVBHmmRN4UHGeAMOYc26WFHMRQpSIrYARv6R0VC8qjDiJJn8ro9ahoY2LKhdFqQ";
+    const DEFAULT_CHANNEL_ID = "UCQchqkcCEDq3evCC0yKQKzw";
+
+    // Sample channels for quick demo
+    // Google OAuth Explicit Authorization to fetch ALL subscriptions (including private)
+    function authenticateGoogleOAuth() {
+      // Check for token in URL fragment if returning from OAuth redirect
+      const CLIENT_ID = '1063683838183-f3k09q5e01j3v5g.apps.googleusercontent.com'; // Generic public OAuth scope request
+      const REDIRECT_URI = window.location.href.split('#')[0];
+      const SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=1082694932675-9e6r3k73h3l7g2a3l45u4e.apps.googleusercontent.com` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&response_type=token` +
+        `&scope=${encodeURIComponent(SCOPE)}` +
+        `&include_granted_scopes=true`;
+
+      // OAuth Implicit flow via popup or token parsing
+      const popup = window.open(
+        `https://accounts.google.com/o/oauth2/v2/auth?client_id=1082694932675-8e1n11q3g4.apps.googleusercontent.com&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${encodeURIComponent(SCOPE)}`,
+        'YouTube Auth',
+        'width=500,height=600'
+      );
+
+      // Check URL hash for token if redirected directly
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1));
+        oauthAccessToken = params.get('access_token');
+        if (oauthAccessToken) {
+          logConsole('[OAuth Success] Authorized with Google Account!');
+          showToast('Google OAuth Authorized!');
+          fetchSubscriptionsWithOAuth(oauthAccessToken);
+          window.location.hash = '';
+          return;
+        }
+      }
+
+      // Alternate inline token prompt fallback if popup blocked
+      const userToken = prompt("Paste Google OAuth Token or click OK to auto-import via Quick Paste:", "");
+      if (userToken && userToken.trim()) {
+        fetchSubscriptionsWithOAuth(userToken.trim());
+      } else {
+        openImportModal();
+      }
+    }
+
+    async function fetchSubscriptionsWithOAuth(token) {
+      logConsole('[OAuth] Fetching ALL subscriptions from YouTube account...');
+      let fetchedSubs = [];
+      let nextPageToken = '';
+
+      try {
+        do {
+          let url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50`;
+          if (nextPageToken) url += `&pageToken=${nextPageToken}`;
+
+          const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+
+          if (data.error) throw new Error(data.error.message);
+
+          if (data.items) {
+            const pageItems = data.items.map(item => ({
+              id: item.snippet.resourceId.channelId,
+              name: item.snippet.title,
+              icon: item.snippet.thumbnails?.default?.url || ''
+            }));
+            fetchedSubs.push(...pageItems);
+          }
+          nextPageToken = data.nextPageToken || '';
+        } while (nextPageToken);
+
+        if (fetchedSubs.length > 0) {
+          subscriptions = fetchedSubs;
+          saveState();
+          renderSubscriptions();
+          logConsole(`[OAuth Success] Loaded ALL ${subscriptions.length} subscriptions!`);
+          showToast(`Successfully loaded all ${subscriptions.length} channels!`);
+          document.getElementById('oauthBtnText').textContent = `Loaded ${subscriptions.length} Subs`;
+        }
+      } catch (err) {
+        logConsole(`[OAuth Error] ${err.message}`, 'error');
+        showToast(`OAuth Error: ${err.message}`, 'error');
+      }
+    }
+
+    // Initialize application state from localStorage
+    window.onload = () => {
+      loadState();
+      renderSubscriptions();
+      renderFavorites();
+
+      // Check if OAuth token returned in URL hash
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const token = params.get('access_token');
+        if (token) {
+          window.location.hash = '';
+          fetchSubscriptionsWithOAuth(token);
+          return;
+        }
+      }
+
+      // Auto-fetch subscriptions via YouTube API if API Key and Channel ID are available
+      const apiKey = document.getElementById('youtubeApiKey').value.trim();
+      const channelId = document.getElementById('userChannelId').value.trim();
+
+      if (apiKey && channelId) {
+        logConsole('[Auto Load] Automatically fetching YouTube subscriptions on startup...');
+        fetchSubscriptionsFromAPI();
+      } else if (subscriptions.length === 0) {
+        fetchDemoData();
+      }
+    };
+
+    // Auto-resolve channel ID or handles when fetching
+    async function resolveChannelId(input, apiKey) {
+      const trimmed = input.trim();
+      if (!trimmed) return null;
+      if (trimmed.startsWith('UC') && trimmed.length === 24) return trimmed;
+
+      try {
+        let handle = trimmed.replace(/^https?:\/\/(www\.)?youtube\.com\//, '').replace(/^@/, '');
+        const handleRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id,snippet&forHandle=${encodeURIComponent(handle)}&key=${apiKey}`);
+        const handleData = await handleRes.json();
+        if (handleData.items && handleData.items.length > 0) {
+          return handleData.items[0].id;
+        }
+
+        const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(trimmed)}&key=${apiKey}`);
+        const searchData = await searchRes.json();
+        if (searchData.items && searchData.items.length > 0) {
+          return searchData.items[0].id.channelId;
+        }
+      } catch (err) {
+        logConsole(`[API Error] Failed to resolve Channel ID: ${err.message}`, 'error');
+      }
+      return null;
+    }
+
+    // Fetch Subscriptions using API key
+    async function fetchSubscriptionsFromAPI() {
+      const apiKey = document.getElementById('youtubeApiKey').value.trim();
+      let channelInput = document.getElementById('userChannelId').value.trim();
+
+      if (!apiKey) {
+        showToast('Please enter a YouTube API Key', 'error');
+        return;
+      }
+
+      logConsole('[API Request] Resolving Channel ID...');
+      const resolvedId = await resolveChannelId(channelInput, apiKey);
+      if (resolvedId) {
+        channelInput = resolvedId;
+        document.getElementById('userChannelId').value = resolvedId;
+        logConsole(`[API Success] Resolved Channel ID: ${resolvedId}`);
+      }
+
+      logConsole('[API Request] Fetching all pages of subscriptions from YouTube Data API v3...');
+
+      let fetchedSubs = [];
+      let nextPageToken = '';
+
+      try {
+        // Loop through all pages using nextPageToken
+        do {
+          let url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&channelId=${channelInput}&maxResults=50&key=${apiKey}`;
+          if (nextPageToken) {
+            url += `&pageToken=${nextPageToken}`;
+          }
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.error) {
+            if (data.error.code === 403 || data.error.message.includes('mine')) {
+              logConsole('[API Info] Direct private subscriptions require OAuth authorization. Loading user channel details...', 'warn');
+              const chRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&id=${channelInput}&key=${apiKey}`);
+              const chData = await chRes.json();
+              
+              if (chData.items && chData.items.length > 0) {
+                const ch = chData.items[0];
+                const userChan = {
+                  id: ch.id,
+                  name: ch.snippet.title,
+                  icon: ch.snippet.thumbnails?.default?.url || ''
+                };
+                addSubscriptionToList(userChan);
+              }
+              fetchDemoData();
+              showToast('Note: Make sure your YouTube subscriptions are set to "Public" in YouTube Privacy Settings!', 'info');
+              return;
+            }
+            throw new Error(data.error.message);
+          }
+
+          if (data.items && data.items.length > 0) {
+            const pageItems = data.items.map(item => ({
+              id: item.snippet.resourceId.channelId,
+              name: item.snippet.title,
+              icon: item.snippet.thumbnails?.default?.url || ''
+            }));
+            fetchedSubs.push(...pageItems);
+          }
+
+          nextPageToken = data.nextPageToken || '';
+        } while (nextPageToken);
+
+        if (fetchedSubs.length > 0) {
+          subscriptions = fetchedSubs;
+          saveState();
+          renderSubscriptions();
+          logConsole(`[API Success] Fetched ALL ${subscriptions.length} public subscriptions across all pages!`);
+          showToast(`Successfully loaded all ${subscriptions.length} channels!`);
+        } else {
+          logConsole('[API Info] 0 public subscriptions found. Check if your subscriptions are set to Public in YouTube Settings -> Privacy.', 'warn');
+          showToast('No public subscriptions found. Check YouTube Privacy Settings.', 'info');
+        }
+      } catch (err) {
+        logConsole(`[API Error] ${err.message}`, 'error');
+        showToast(`API Error: ${err.message}`, 'error');
+      }
+    }
+
+    function addSubscriptionToList(chan) {
+      if (!subscriptions.some(s => s.id === chan.id)) {
+        subscriptions.unshift(chan);
+        saveState();
+        renderSubscriptions();
+      }
+    }
+
+    function saveState() {
+      const apiKey = document.getElementById('youtubeApiKey').value.trim();
+      const userChanId = document.getElementById('userChannelId').value.trim();
+      const webhookUrl = document.getElementById('webhookUrl').value.trim();
+      const keywordFilter = document.getElementById('keywordFilter').value.trim();
+      const webhookFormat = document.getElementById('webhookFormat').value;
+      const pollInterval = document.getElementById('pollInterval').value;
+
+      localStorage.setItem('yt_api_key', apiKey);
+      localStorage.setItem('yt_user_channel_id', userChanId);
+      localStorage.setItem('yt_webhook_url', webhookUrl);
+      localStorage.setItem('yt_keyword_filter', keywordFilter);
+      localStorage.setItem('yt_webhook_format', webhookFormat);
+      localStorage.setItem('yt_poll_interval', pollInterval);
+      localStorage.setItem('yt_subscriptions', JSON.stringify(subscriptions));
+      localStorage.setItem('yt_favorites', JSON.stringify(favorites));
+      localStorage.setItem('yt_seen_videos', JSON.stringify(Array.from(seenVideoIds)));
+    }
+
+    function loadState() {
+      const savedApiKey = localStorage.getItem('yt_api_key');
+      const savedUserChanId = localStorage.getItem('yt_user_channel_id');
+      const savedWebhook = localStorage.getItem('yt_webhook_url');
+      const savedKeywords = localStorage.getItem('yt_keyword_filter');
+      const savedFormat = localStorage.getItem('yt_webhook_format');
+      const savedPoll = localStorage.getItem('yt_poll_interval');
+      const savedSubs = localStorage.getItem('yt_subscriptions');
+      const savedFavs = localStorage.getItem('yt_favorites');
+      const savedSeen = localStorage.getItem('yt_seen_videos');
+
+      document.getElementById('youtubeApiKey').value = savedApiKey !== null ? savedApiKey : DEFAULT_API_KEY;
+      document.getElementById('userChannelId').value = savedUserChanId !== null ? savedUserChanId : DEFAULT_CHANNEL_ID;
+      document.getElementById('webhookUrl').value = savedWebhook !== null ? savedWebhook : DEFAULT_WEBHOOK_URL;
+      if (savedKeywords !== null) document.getElementById('keywordFilter').value = savedKeywords;
+      if (savedFormat !== null) document.getElementById('webhookFormat').value = savedFormat;
+      if (savedPoll !== null) document.getElementById('pollInterval').value = savedPoll;
+
+      if (savedSubs) {
+        try { subscriptions = JSON.parse(savedSubs); } catch (e) { subscriptions = []; }
+      }
+      if (savedFavs) {
+        try { favorites = JSON.parse(savedFavs); } catch (e) { favorites = []; }
+      }
+      if (savedSeen) {
+        try { seenVideoIds = new Set(JSON.parse(savedSeen)); } catch (e) { seenVideoIds = new Set(); }
+      }
+      
+      logConsole(`[State Loaded] Restored ${favorites.length} favorite(s) and ${subscriptions.length} channel(s) from storage.`);
+    }
+
+    function renderFavorites() {
+      const container = document.getElementById('favoritesList');
+      const countBadge = document.getElementById('favCount');
+      if (countBadge) countBadge.textContent = `${favorites.length} Favorite${favorites.length === 1 ? '' : 's'}`;
+
+      if (!favorites || favorites.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-500 text-xs">No favorite creators added yet.<br>Click "+ Favorite" on any subscription channel!</div>`;
+        return;
+      }
+
+      container.innerHTML = favorites.map(chan => {
+        const avatar = chan.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(chan.name)}&background=1e293b&color=94a3b8`;
+        return `
+          <div class="flex items-center justify-between p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-xl hover:border-slate-700 transition">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${avatar}" alt="${chan.name}" class="w-8 h-8 rounded-full object-cover bg-slate-800 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=YT&background=334155&color=fff'">
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-slate-200 truncate">${escapeHtml(chan.name)}</p>
+                <p class="text-[10px] font-mono text-slate-500 truncate">${chan.id}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <a href="https://www.youtube.com/channel/${chan.id}" target="_blank" title="View Channel" class="p-1.5 text-slate-400 hover:text-red-400 transition text-xs">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+              <button onclick="toggleFavorite('${chan.id}', '${escapeHtml(chan.name)}', '${chan.icon}')" class="p-1.5 text-slate-400 hover:text-red-400 transition text-xs" title="Remove Favorite">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleFavorite(id, name, icon) {
+      const index = favorites.findIndex(f => f.id === id);
+      if (index >= 0) {
+        favorites.splice(index, 1);
+        showToast(`Removed ${name} from favorites`);
+      } else {
+        favorites.push({ id, name, icon });
+        showToast(`Added ${name} to favorites`);
+      }
+      saveState();
+      renderFavorites();
+      renderSubscriptions();
+    }
+
+    function addManualChannel() {
+      const input = document.getElementById('manualChannelId');
+      const val = input.value.trim();
+      if (!val) {
+        showToast('Please enter a channel ID or URL', 'error');
+        return;
+      }
+      const match = val.match(/UC[a-zA-Z0-9_-]{22}/);
+      const chanId = match ? match[0] : val;
+      const existing = subscriptions.find(s => s.id === chanId) || { id: chanId, name: `Channel (${chanId.substring(0, 8)}...)`, icon: '' };
+      
+      toggleFavorite(existing.id, existing.name, existing.icon);
+      if (!subscriptions.some(s => s.id === existing.id)) {
+        subscriptions.unshift(existing);
+      }
+      input.value = '';
+      saveState();
+      renderFavorites();
+      renderSubscriptions();
+    }
+
+    function fetchDemoData() {
+      subscriptions = [...demoChannels];
+      saveState();
+      renderSubscriptions();
+      logConsole('[Demo Data] Loaded standard demo channel list.');
+    }
+
+    function openImportModal() {
+      document.getElementById('importModal').classList.remove('hidden');
+    }
+
+    function closeImportModal() {
+      document.getElementById('importModal').classList.add('hidden');
+    }
+
+    function handleOPMLFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+          const outlines = xmlDoc.querySelectorAll("outline[xmlUrl]");
+          let count = 0;
+          outlines.forEach(el => {
+            const xmlUrl = el.getAttribute("xmlUrl") || "";
+            const title = el.getAttribute("title") || el.getAttribute("text") || "YouTube Channel";
+            const match = xmlUrl.match(/channel_id=(UC[a-zA-Z0-9_-]{22})/);
+            if (match && match[1]) {
+              addSubscriptionToList({ id: match[1], name: title, icon: '' });
+              count++;
+            }
+          });
+          showToast(`Imported ${count} channels from OPML!`);
+          closeImportModal();
+        } catch (err) {
+          showToast('Failed to parse OPML file', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function processChannelListInput() {
+      const raw = document.getElementById('channelListInput').value;
+      const lines = raw.split('\n');
+      let count = 0;
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        const match = trimmed.match(/UC[a-zA-Z0-9_-]{22}/);
+        const id = match ? match[0] : (trimmed.startsWith('UC') && trimmed.length === 24 ? trimmed : null);
+        if (id) {
+          addSubscriptionToList({ id, name: `Channel ${id.substring(0,6)}...`, icon: '' });
+          count++;
+        }
+      });
+      showToast(`Added ${count} channels from list!`);
+      closeImportModal();
+    }
+
+    // Direct parser for raw YouTube page copy-paste
+    async function parseRawPaste() {
+      const raw = document.getElementById('rawPasteInput').value;
+      if (!raw.trim()) {
+        showToast('Please paste YouTube page text or links first', 'error');
+        return;
+      }
+
+      logConsole('[Import] Parsing raw input text for channel links and IDs...');
+      
+      // Match all UC... IDs
+      const channelIdMatches = raw.match(/UC[a-zA-Z0-9_-]{22}/g) || [];
+      // Match handles (@username)
+      const handleMatches = raw.match(/@([a-zA-Z0-9_.-]+)/g) || [];
+      
+      const uniqueIds = Array.from(new Set(channelIdMatches));
+      let addedCount = 0;
+
+      uniqueIds.forEach(id => {
+        if (!subscriptions.some(s => s.id === id)) {
+          addSubscriptionToList({ id, name: `Channel (${id.substring(0, 8)})`, icon: '' });
+          addedCount++;
+        }
+      });
+
+      const apiKey = document.getElementById('youtubeApiKey').value.trim();
+      if (apiKey && handleMatches.length > 0) {
+        const uniqueHandles = Array.from(new Set(handleMatches)).slice(0, 15); // limit resolution batch
+        for (const handle of uniqueHandles) {
+          const resolvedId = await resolveChannelId(handle, apiKey);
+          if (resolvedId && !subscriptions.some(s => s.id === resolvedId)) {
+            addSubscriptionToList({ id: resolvedId, name: handle, icon: '' });
+            addedCount++;
+          }
+        }
+      }
+
+      saveState();
+      renderSubscriptions();
+      renderFavorites();
+      showToast(`Successfully extracted and added ${addedCount} channels!`);
+      closeImportModal();
+    }
+
+    function logConsole(message, type = 'info') {
+      const consoleLog = document.getElementById('consoleLog');
+      if (!consoleLog) return;
+      const time = new Date().toLocaleTimeString();
+      const colorClass = type === 'error' ? 'text-red-400' : type === 'warn' ? 'text-amber-400' : 'text-slate-300';
+      const entry = document.createElement('div');
+      entry.className = colorClass;
+      entry.innerHTML = `<span class="text-slate-600">[${time}]</span> ${escapeHtml(message)}`;
+      consoleLog.appendChild(entry);
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+      if (!toast) return;
+
+      toastMessage.textContent = msg;
+      if (type === 'error') {
+        toastIcon.className = 'fa-solid fa-circle-xmark text-red-400 text-lg';
+      } else if (type === 'info') {
+        toastIcon.className = 'fa-solid fa-circle-info text-amber-400 text-lg';
+      } else {
+        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+
+    function renderSubscriptions() {
+      const container = document.getElementById('subscriptionsList');
+      const query = document.getElementById('searchSubs').value.toLowerCase().trim();
+      const filterType = document.getElementById('subFilterType').value;
+
+      let filtered = subscriptions.filter(s => s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
+
+      if (filterType === 'favs') {
+        filtered = filtered.filter(s => favorites.some(f => f.id === s.id));
+      } else if (filterType === 'nonfavs') {
+        filtered = filtered.filter(s => !favorites.some(f => f.id === s.id));
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-500 text-xs">No matching channels found.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(chan => {
+        const isFav = favorites.some(f => f.id === chan.id);
+        const avatar = chan.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(chan.name)}&background=1e293b&color=94a3b8`;
+
+        return `
+          <div class="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl hover:border-slate-700 transition">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${avatar}" alt="${chan.name}" class="w-9 h-9 rounded-full object-cover bg-slate-800 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=YT&background=334155&color=fff'">
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-slate-200 truncate">${escapeHtml(chan.name)}</p>
+                <p class="text-[10px] font-mono text-slate-500 truncate">${chan.id}</p>
+              </div>
+            </div>
+            <button onclick="toggleFavorite('${chan.id}', '${escapeHtml(chan.name)}', '${chan.icon}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+              isFav ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+            }">
+              <i class="fa-${isFav ? 'solid' : 'regular'} fa-star ${isFav ? 'text-amber-400' : ''}"></i>
+              ${isFav ? 'Favorited' : '+ Favorite'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function checkRSSFeeds() {
+      if (favorites.length === 0) {
+        logConsole('[RSS Monitor] No favorite creators set to monitor.', 'warn');
+        return;
+      }
+
+      logConsole(`[RSS Poll] Checking feeds for ${favorites.length} favorite creator(s)...`);
+
+      // Retrieve keyword filter list
+      const filterInput = document.getElementById('keywordFilter').value.trim().toLowerCase();
+      const filterKeywords = filterInput ? filterInput.split(',').map(k => k.trim()).filter(Boolean) : [];
+
+      for (const channel of favorites) {
+        try {
+          const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.id}`;
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`;
+          
+          const response = await fetch(proxyUrl);
+          if (!response.ok) continue;
+
+          const data = await response.json();
+          if (!data.contents) continue;
+
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+          const entries = xmlDoc.querySelectorAll("entry");
+
+          entries.forEach(entry => {
+            const videoId = entry.querySelector("videoId")?.textContent;
+            const title = entry.querySelector("title")?.textContent;
+            const link = entry.querySelector("link")?.getAttribute("href");
+
+            if (videoId && !seenVideoIds.has(videoId)) {
+              // Apply keyword filter check if keywords are specified
+              if (filterKeywords.length > 0) {
+                const titleLower = title.toLowerCase();
+                const matchesKeyword = filterKeywords.some(kw => titleLower.includes(kw));
+                if (!matchesKeyword) {
+                  logConsole(`[Filter Skip] "${title}" ignored (does not match keyword rules).`, 'warn');
+                  return;
+                }
+              }
+
+              seenVideoIds.add(videoId);
+              saveState();
+              logConsole(`[NEW VIDEO DETECTED] "${title}" by ${channel.name}!`);
+              dispatchWebhook(channel.name, title, link, videoId, channel.icon);
+            }
+          });
+
+        } catch (err) {
+          logConsole(`[RSS Error] Channel ${channel.name} (${channel.id}): ${err.message}`, 'error');
+        }
+      }
+    }
+
+    async function dispatchWebhook(channelName, videoTitle, videoLink, videoId = '', channelIcon = '') {
+      const webhookUrl = document.getElementById('webhookUrl').value.trim();
+      const format = document.getElementById('webhookFormat').value;
+
+      if (!webhookUrl) {
+        logConsole('[Webhook Skipped] No Webhook URL specified.', 'warn');
+        return;
+      }
+
+      let payload = {};
+      const thumbnailUrl = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
+
+      if (format === 'embed') {
+        payload = {
+          embeds: [{
+            title: videoTitle,
+            url: videoLink,
+            color: 16711680, // YouTube Red
+            author: {
+              name: `${channelName} uploaded a new video!`,
+              icon_url: channelIcon || 'https://www.youtube.com/s/desktop/f1e7ff8a/img/favicon_144x144.png'
+            },
+            image: thumbnailUrl ? { url: thumbnailUrl } : null,
+            footer: { text: 'YouTube Webhook Dispatcher' },
+            timestamp: new Date().toISOString()
+          }]
+        };
+      } else {
+        payload = {
+          content: `🎥 **${channelName}** uploaded a new video!\n**${videoTitle}**\n${videoLink}`
+        };
+      }
+
+      try {
+        logConsole(`[Webhook Dispatching] Sending alert for "${videoTitle}"...`);
+        const res = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const status = res.ok || res.status === 204 ? 'Success' : `Failed (${res.status})`;
+
+        // Store in dispatch history log
+        webhookHistory.unshift({
+          timestamp: new Date().toLocaleTimeString(),
+          channelName,
+          videoTitle,
+          videoLink,
+          status
+        });
+
+        renderWebhookHistory();
+
+        if (res.ok || res.status === 204) {
+          logConsole(`[Webhook Success] Sent notification for "${videoTitle}"!`);
+          showToast(`Webhook sent for ${channelName}!`);
+        } else {
+          logConsole(`[Webhook Error] Server responded with status ${res.status}`, 'error');
+        }
+      } catch (err) {
+        logConsole(`[Webhook Error] Failed to send payload: ${err.message}`, 'error');
+      }
+    }
+
+    function switchConsoleTab(tab) {
+      activeConsoleTab = tab;
+      const logTab = document.getElementById('consoleLog');
+      const historyTab = document.getElementById('webhookHistoryLog');
+      const btnLog = document.getElementById('tabBtnLog');
+      const btnHistory = document.getElementById('tabBtnHistory');
+
+      if (tab === 'log') {
+        logTab.classList.remove('hidden');
+        historyTab.classList.add('hidden');
+        btnLog.className = 'text-xs font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-400 pb-1 flex items-center gap-1.5';
+        btnHistory.className = 'text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 pb-1 flex items-center gap-1.5';
+      } else {
+        logTab.classList.add('hidden');
+        historyTab.classList.remove('hidden');
+        btnHistory.className = 'text-xs font-bold uppercase tracking-wider text-amber-400 border-b-2 border-amber-400 pb-1 flex items-center gap-1.5';
+        btnLog.className = 'text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 pb-1 flex items-center gap-1.5';
+      }
+    }
+
+    function renderWebhookHistory() {
+      const historyContainer = document.getElementById('webhookHistoryLog');
+      document.getElementById('historyCount').textContent = webhookHistory.length;
+
+      if (webhookHistory.length === 0) {
+        historyContainer.innerHTML = `<div class="text-slate-600 text-center py-4">No webhooks sent yet during this session.</div>`;
+        return;
+      }
+
+      historyContainer.innerHTML = webhookHistory.map(item => `
+        <div class="border-b border-slate-900 pb-1 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <span class="text-slate-500">[${item.timestamp}]</span>
+            <span class="text-amber-300 font-semibold">${escapeHtml(item.channelName)}</span>: 
+            <a href="${item.videoLink}" target="_blank" class="text-slate-300 hover:text-red-400 hover:underline truncate">${escapeHtml(item.videoTitle)}</a>
+          </div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded ${item.status === 'Success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'} whitespace-nowrap">${item.status}</span>
+        </div>
+      `).join('');
+    }
+
+    function clearCurrentConsoleTab() {
+      if (activeConsoleTab === 'log') {
+        document.getElementById('consoleLog').innerHTML = '';
+      } else {
+        webhookHistory = [];
+        renderWebhookHistory();
+      }
+    }
+
+    function updatePollFrequency() {
+      saveState();
+      if (isMonitoring) {
+        toggleMonitoring(); // restart timer with new interval
+        toggleMonitoring();
+      }
+    }
+
+    function exportFullConfig() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+        apiKey: document.getElementById('youtubeApiKey').value,
+        channelId: document.getElementById('userChannelId').value,
+        webhookUrl: document.getElementById('webhookUrl').value,
+        keywordFilter: document.getElementById('keywordFilter').value,
+        webhookFormat: document.getElementById('webhookFormat').value,
+        pollInterval: document.getElementById('pollInterval').value,
+        favorites,
+        subscriptions
+      }, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "yt_webhook_dispatcher_config.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Exported backup config');
+    }
+
+    function toggleMonitoring() {
+      const btn = document.getElementById('toggleMonitorBtn');
+      const badge = document.getElementById('monitorStatusBadge');
+      const seconds = parseInt(document.getElementById('pollInterval').value) || 180;
+
+      if (isMonitoring) {
+        clearInterval(monitorInterval);
+        isMonitoring = false;
+        btn.className = 'bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2';
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Start Monitor';
+        badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span>Monitoring Idle</span>';
+        logConsole('[Monitor Stopped] Live polling disabled.');
+      } else {
+        isMonitoring = true;
+        btn.className = 'bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2 pulse-ring';
+        btn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Monitor';
+        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span class="text-emerald-400">Monitoring (${Math.round(seconds/60)}m interval)</span>`;
+        logConsole(`[Monitor Started] Polling RSS feeds every ${Math.round(seconds/60)} minutes...`);
+        checkRSSFeeds();
+        monitorInterval = setInterval(checkRSSFeeds, seconds * 1000);
+      }
+    }
+  </script>
+</body>
+</html>
