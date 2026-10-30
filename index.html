@@ -80,7 +80,7 @@
 
         <div id="monitorStatusBadge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium text-slate-400 shadow-inner">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-emerald-400">Monitoring (3m interval)</span>
+          <span id="monitorStatusText" class="text-emerald-400">Monitoring (60s interval)</span>
         </div>
         <button id="toggleMonitorBtn" onclick="toggleMonitoring()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2 pulse-ring">
           <i class="fa-solid fa-stop"></i> Stop Monitor
@@ -103,17 +103,18 @@
         </h2>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">YouTube Data API v3 Key</label>
-            <input type="password" id="youtubeApiKey" placeholder="AIzaSy..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors font-mono">
+            <label class="block text-xs text-slate-400 mb-1">YouTube Data API v3 Key (or OAuth Token)</label>
+            <input type="password" id="youtubeApiKey" oninput="saveSettings()" placeholder="AIzaSy... or Bearer token" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors font-mono">
           </div>
           <div>
             <label class="block text-xs text-slate-400 mb-1">Channel ID, Handle (@username), or Custom URL</label>
             <div class="flex gap-2">
-              <input type="text" id="userChannelId" value="UCQchqkcCEDq3evCC0yKQKzw" placeholder="e.g. @mkbhd or UC..." class="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <input type="text" id="userChannelId" oninput="saveSettings()" placeholder="e.g. @mkbhd or UC..." class="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
               <button onclick="fetchSubscriptionsFromAPI()" class="bg-red-600 hover:bg-red-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-red-900/30">
                 <i class="fa-solid fa-cloud-arrow-down"></i> Load API Subs
               </button>
             </div>
+            <p class="text-[10px] text-slate-500 mt-1">Note: To fetch private subscriptions, connect OAuth or enter an OAuth Token in the key field.</p>
           </div>
         </div>
       </section>
@@ -129,23 +130,23 @@
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Webhook Target URL (Discord / Slack)</label>
-            <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors font-mono">
+            <input type="url" id="webhookUrl" oninput="saveSettings()" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors font-mono">
           </div>
 
           <div class="grid grid-cols-2 gap-3 pt-1">
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Poll Frequency</label>
               <select id="pollInterval" onchange="handlePollIntervalChange()" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                <option value="15">Every 15 secs</option>
                 <option value="30">Every 30 secs</option>
                 <option value="60" selected>Every 60 secs</option>
                 <option value="120">Every 120 secs</option>
-                <option value="300">Every 300 secs</option>
                 <option value="custom">Custom (seconds)...</option>
               </select>
             </div>
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Discord Format</label>
-              <select id="webhookFormat" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <select id="webhookFormat" onchange="saveSettings()" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
                 <option value="embed" selected>Rich Embed Card</option>
                 <option value="plain">Plain Text Link</option>
               </select>
@@ -160,7 +161,7 @@
 
           <div>
             <label class="block text-[11px] text-slate-400 mb-1">Keyword Title Filters (Comma-separated, optional)</label>
-            <input type="text" id="keywordFilter" placeholder="e.g. #Shorts, Review, Unboxing" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+            <input type="text" id="keywordFilter" oninput="saveSettings()" placeholder="e.g. #Shorts, Review, Unboxing" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
           </div>
 
           <!-- Advanced Settings Drawer -->
@@ -171,11 +172,11 @@
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-[10px] text-slate-400 mb-1">Bot Username</label>
-                <input type="text" id="customBotName" placeholder="YouTube Dispatcher" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                <input type="text" id="customBotName" oninput="saveSettings()" placeholder="YouTube Dispatcher" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
               </div>
               <div>
                 <label class="block text-[10px] text-slate-400 mb-1">Embed Color</label>
-                <select id="embedColorHex" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                <select id="embedColorHex" onchange="saveSettings()" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
                   <option value="16711680" selected>Red (#FF0000)</option>
                   <option value="5763719">Emerald (#57F287)</option>
                   <option value="3447003">Electric Blue (#3498DB)</option>
@@ -185,7 +186,7 @@
             </div>
             <div>
               <label class="block text-[10px] text-slate-400 mb-1">Ping / Mention Option</label>
-              <select id="pingOption" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <select id="pingOption" onchange="saveSettings()" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
                 <option value="none" selected>None (Silent Notification)</option>
                 <option value="everyone">@everyone</option>
                 <option value="here">@here</option>
@@ -195,7 +196,7 @@
 
           <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
             <label class="flex items-center gap-2 cursor-pointer text-slate-300">
-              <input type="checkbox" id="autoCheck" checked class="rounded bg-slate-950 border-slate-800 text-red-600 focus:ring-0">
+              <input type="checkbox" id="autoCheck" onchange="saveSettings()" checked class="rounded bg-slate-950 border-slate-800 text-red-600 focus:ring-0">
               Auto-poll feeds
             </label>
             <button onclick="testWebhook()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 transition flex items-center gap-1.5">
@@ -365,6 +366,71 @@
     let favorites = [];
     let isMonitoring = true;
     let pollTimer = null;
+    let currentIntervalSeconds = 60;
+
+    const SETTINGS_KEY = 'yt_webhook_dispatcher_settings_v2';
+
+    function saveSettings() {
+      const settings = {
+        apiKey: document.getElementById('youtubeApiKey').value,
+        channelId: document.getElementById('userChannelId').value,
+        webhookUrl: document.getElementById('webhookUrl').value,
+        pollInterval: document.getElementById('pollInterval').value,
+        customPollSeconds: document.getElementById('customPollSeconds').value,
+        webhookFormat: document.getElementById('webhookFormat').value,
+        keywordFilter: document.getElementById('keywordFilter').value,
+        customBotName: document.getElementById('customBotName').value,
+        embedColorHex: document.getElementById('embedColorHex').value,
+        pingOption: document.getElementById('pingOption').value,
+        autoCheck: document.getElementById('autoCheck').checked,
+        isMonitoring: isMonitoring,
+        favorites: favorites,
+        subscriptions: subscriptions
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function loadSettings() {
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (!saved) return false;
+      try {
+        const data = JSON.parse(saved);
+        if (data.apiKey !== undefined) document.getElementById('youtubeApiKey').value = data.apiKey;
+        if (data.channelId !== undefined) document.getElementById('userChannelId').value = data.channelId;
+        if (data.webhookUrl !== undefined) document.getElementById('webhookUrl').value = data.webhookUrl;
+        if (data.pollInterval !== undefined) {
+          document.getElementById('pollInterval').value = data.pollInterval;
+          if (data.pollInterval === 'custom') {
+            document.getElementById('customPollContainer').classList.remove('hidden');
+          }
+        }
+        if (data.customPollSeconds !== undefined) document.getElementById('customPollSeconds').value = data.customPollSeconds;
+        if (data.pollInterval === 'custom') {
+          currentIntervalSeconds = parseInt(data.customPollSeconds) || 45;
+        } else {
+          currentIntervalSeconds = parseInt(data.pollInterval) || 60;
+        }
+        if (data.webhookFormat !== undefined) document.getElementById('webhookFormat').value = data.webhookFormat;
+        if (data.keywordFilter !== undefined) document.getElementById('keywordFilter').value = data.keywordFilter;
+        if (data.customBotName !== undefined) document.getElementById('customBotName').value = data.customBotName;
+        if (data.embedColorHex !== undefined) document.getElementById('embedColorHex').value = data.embedColorHex;
+        if (data.pingOption !== undefined) document.getElementById('pingOption').value = data.pingOption;
+        if (data.autoCheck !== undefined) document.getElementById('autoCheck').checked = data.autoCheck;
+        if (data.isMonitoring !== undefined) {
+          isMonitoring = data.isMonitoring;
+        } else {
+          isMonitoring = true; // Default to auto start
+        }
+        if (Array.isArray(data.favorites)) favorites = data.favorites;
+        if (Array.isArray(data.subscriptions) && data.subscriptions.length > 0) {
+          subscriptions = data.subscriptions;
+        }
+        return true;
+      } catch (e) {
+        console.error('Failed to load settings:', e);
+        return false;
+      }
+    }
 
     function logMessage(text) {
       const container = document.getElementById('logContainer');
@@ -376,7 +442,7 @@
     }
 
     function clearLogs() {
-      document.getElementById('logContainerinnerHTML') = '';
+      document.getElementById('logContainer').innerHTML = '';
       logMessage('Logs cleared.');
     }
 
@@ -400,7 +466,10 @@
     }
     function submitPastedToken() {
       const token = document.getElementById('pastedBearerToken').value.trim();
-      if (!token) return alert('Please enter a valid token.');
+      if (!token) {
+        alert('Please enter a valid token.');
+        return;
+      }
       closeTokenModal();
       logMessage('OAuth Bearer token stored. Fetching user subscriptions...');
       fetchSubscriptionsWithToken(token);
@@ -429,6 +498,7 @@
       }
       renderFavorites();
       renderSubscriptions();
+      saveSettings();
     }
 
     function renderFavorites() {
@@ -507,86 +577,151 @@
       ];
       logMessage('Loaded 3 demo subscription channels.');
       renderSubscriptions();
+      saveSettings();
     }
 
-    function addManualChannel() {
-      const input = document.getElementById('manualChannelId').value.trim();
-      if (!input) return;
-      const id = input.startsWith('@') ? input : (input.startsWith('UC') ? input : 'UC' + input);
-      const title = input;
-      if (!favorites.some(f => f.id === id)) {
-        favorites.push({ id, title, avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=334155&color=fff` });
-        logMessage(`Manually added ${title} to favorites.`);
-        renderFavorites();
-        document.getElementById('manualChannelId').value = '';
+    async function resolveChannelId(input, apiKey) {
+      input = input.trim();
+      if (input.startsWith('UC') && input.length === 24) {
+        return input;
       }
-    }
+      
+      let isBearer = apiKey.startsWith('ya29.');
+      const headers = {};
+      if (isBearer) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
 
-    function handleOPMLFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(e.target.result, 'text/xml');
-        const outlines = doc.querySelectorAll('outline[xmlUrl]');
-        let count = 0;
-        outlines.forEach(outline => {
-          const title = outline.getAttribute('title') || outline.getAttribute('text') || 'Channel';
-          const xmlUrl = outline.getAttribute('xmlUrl');
-          const match = xmlUrl.match(/channel_id=([a-zA-Z0-9_-]+)/);
-          if (match && match[1]) {
-            const id = match[1];
-            if (!subscriptions.some(s => s.id === id)) {
-              subscriptions.push({ id, title, avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=334155&color=fff` });
-              count++;
-            }
-          }
-        });
-        logMessage(`Successfully imported ${count} subscriptions from OPML file.`);
-        closeImportModal();
-        renderSubscriptions();
-      };
-      reader.readAsText(file);
-    }
+      // 1. Try forHandle if starts with @ or general
+      let handleQuery = input.startsWith('@') ? input.substring(1) : input;
+      let queryUrlHandle = `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(handleQuery)}`;
+      if (!isBearer) queryUrlHandle += `&key=${apiKey}`;
 
-    function processChannelListInput() {
-      const text = document.getElementById('channelListInput').value.trim();
-      if (!text) return;
-      const lines = text.split('\n');
-      let count = 0;
-      lines.forEach(line => {
-        const id = line.trim();
-        if (id.startsWith('UC') && !subscriptions.some(s => s.id === id)) {
-          subscriptions.push({ id, title: `Channel ${id.substring(0,6)}...`, avatar: `https://ui-avatars.com/api/?name=YT&background=334155&color=fff` });
-          count++;
+      try {
+        let res = await fetch(queryUrlHandle, { headers });
+        let data = await res.json();
+        if (data.items && data.items.length > 0) {
+          return data.items[0].id;
         }
-      });
-      logMessage(`Imported ${count} channel IDs.`);
-      closeImportModal();
-      renderSubscriptions();
+      } catch (err) {
+        console.error('Handle resolution error:', err);
+      }
+
+      // 2. Try forUsername if handle lookup returned nothing
+      let queryUrlUser = `https://www.googleapis.com/youtube/v3/channels?part=id&forUsername=${encodeURIComponent(handleQuery)}`;
+      if (!isBearer) queryUrlUser += `&key=${apiKey}`;
+
+      try {
+        let res = await fetch(queryUrlUser, { headers });
+        let data = await res.json();
+        if (data.items && data.items.length > 0) {
+          return data.items[0].id;
+        }
+      } catch (err) {
+        console.error('Username resolution error:', err);
+      }
+
+      return null;
     }
 
-    function fetchSubscriptionsFromAPI() {
-      const apiKey = document.getElementById('youtubeApiKey').value.trim();
+    async function fetchSubscriptionsFromAPI() {
+      const apiKeyInput = document.getElementById('youtubeApiKey').value.trim();
       const channelParam = document.getElementById('userChannelId').value.trim();
-      if (!apiKey || !channelParam) {
-        alert('Please provide both API Key and Channel ID/Handle.');
+      
+      if (!apiKeyInput) {
+        alert('Please enter a YouTube Data API Key or OAuth Bearer Token.');
         return;
       }
-      logMessage(`Fetching subscriptions for ${channelParam} via YouTube Data API...`);
-      setTimeout(() => {
-        logMessage('API mock sync complete. Loaded channels successfully.');
-        fetchDemoData();
-      }, 1000);
+      if (!channelParam) {
+        alert('Please enter your Channel ID, Handle (e.g. @username), or username.');
+        return;
+      }
+
+      saveSettings();
+      logMessage(`Resolving channel identifier "${channelParam}"...`);
+
+      let targetChannelId = channelParam;
+      const isBearer = apiKeyInput.startsWith('ya29.');
+      const effectiveKey = isBearer ? '' : apiKeyInput;
+
+      if (!channelParam.startsWith('UC') || channelParam.length !== 24) {
+        targetChannelId = await resolveChannelId(channelParam, apiKeyInput);
+        if (!targetChannelId) {
+          logMessage(`[Error] Could not resolve channel ID for "${channelParam}". TryingMINE request or direct fetch...`);
+          // If no specific channel found or handle lookup failed, try listing mine if using OAuth
+          if (isBearer) {
+            targetChannelId = 'MINE';
+          } else {
+            alert(`Could not resolve channel "${channelParam}". Please verify your handle or provide the direct 24-character Channel ID (starting with UC).`);
+            return;
+          }
+        }
+      }
+
+      logMessage(`Fetching subscriptions for channel: ${targetChannelId}...`);
+
+      let pageToken = '';
+      let fetchedSubs = [];
+      let maxPages = 5;
+
+      try {
+        while (maxPages > 0) {
+          let mineParam = (targetChannelId === 'MINE') ? 'mine=true' : `channelId=${targetChannelId}`;
+          let url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&${mineParam}&maxResults=50${pageToken ? '&pageToken=' + pageToken : ''}`;
+          const headers = {};
+          
+          if (isBearer) {
+            headers['Authorization'] = `Bearer ${apiKeyInput}`;
+          } else {
+            url += `&key=${effectiveKey}`;
+          }
+
+          const response = await fetch(url, { headers });
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error?.message || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (data.items) {
+            data.items.forEach(item => {
+              const snippet = item.snippet;
+              const subChannelId = snippet.resourceId?.channelId;
+              const title = snippet.title;
+              const avatar = snippet.thumbnails?.default?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=334155&color=fff`;
+              if (subChannelId) {
+                // Avoid duplicates
+                if (!fetchedSubs.some(s => s.id === subChannelId)) {
+                  fetchedSubs.push({ id: subChannelId, title, avatar });
+                }
+              }
+            });
+          }
+
+          pageToken = data.nextPageToken;
+          if (!pageToken || !data.items || data.items.length === 0) break;
+          maxPages--;
+        }
+
+        if (fetchedSubs.length > 0) {
+          subscriptions = fetchedSubs;
+          logMessage(`Successfully loaded ${subscriptions.length} subscriptions into Subscriptions List!`);
+          renderSubscriptions();
+          saveSettings();
+        } else {
+          logMessage('API returned 0 subscriptions. Note: YouTube API subscriptions are often private unless authenticated via OAuth token or channel is public.');
+          alert('No subscriptions found. Note: YouTube subscriptions are often private. Please use an OAuth Token via the "Connect OAuth Token" button above.');
+        }
+      } catch (err) {
+        logMessage(`[API Error] ${err.message}. Ensure API key has YouTube Data API v3 enabled.`);
+        alert(`API Error: ${err.message}`);
+      }
     }
 
     function fetchSubscriptionsWithToken(token) {
-      logMessage('Authenticating via OAuth Token & querying YouTube subscriptions endpoint...');
-      setTimeout(() => {
-        logMessage('OAuth subscription sync complete!');
-        fetchDemoData();
-      }, 1200);
+      document.getElementById('youtubeApiKey').value = token;
+      saveSettings();
+      logMessage('OAuth Bearer token applied. Please enter your Channel ID or handle above and click "Load API Subs".');
     }
 
     function testWebhook() {
@@ -595,6 +730,7 @@
         alert('Please enter a Webhook URL.');
         return;
       }
+      saveSettings();
       logMessage('Dispatching test payload to webhook URL...');
       setTimeout(() => {
         logMessage('Test webhook payload dispatched successfully (200 OK).');
@@ -606,39 +742,56 @@
       const badge = document.getElementById('monitorStatusBadge');
       const btn = document.getElementById('toggleMonitorBtn');
       if (isMonitoring) {
-        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span class="text-emerald-400">Monitoring Active</span>`;
+        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span id="monitorStatusText" class="text-emerald-400">Monitoring (${currentIntervalSeconds}s interval)</span>`;
         btn.innerHTML = `<i class="fa-solid fa-stop"></i> Stop Monitor`;
         btn.className = "bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2 pulse-ring";
         logMessage('Monitoring resumed.');
+        startPollTimer();
       } else {
-        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span class="text-slate-400">Monitoring Paused</span>`;
+        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="monitorStatusText" class="text-slate-400">Monitoring Paused</span>`;
         btn.innerHTML = `<i class="fa-solid fa-play"></i> Start Monitor`;
         btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2";
         logMessage('Monitoring paused.');
+        clearInterval(pollTimer);
       }
-    }
-
-    function handlePollIntervalChange() {
-      const select = document.getElementById('pollInterval');
-      const customContainer = document.getElementById('customPollContainer');
-      if (select.value === 'custom') {
-        customContainer.classList.remove('hidden');
-        const customSecs = document.getElementById('customPollSeconds').value || 45;
-        logMessage(`Poll frequency set to custom interval: ${customSecs} second(s).`);
-      } else {
-        customContainer.classList.add('hidden');
-        const seconds = select.value;
-        logMessage(`Poll frequency updated to every ${seconds} second(s).`);
-      }
+      saveSettings();
     }
 
     function updateCustomPollFrequency() {
-      const secs = document.getElementById('customPollSeconds').value;
-      if (secs < 5) {
+      const secs = parseInt(document.getElementById('customPollSeconds').value);
+      if (isNaN(secs) || secs < 5) {
         alert('Interval must be at least 5 seconds.');
         return;
       }
-      logMessage(`Custom poll frequency updated to every ${secs} second(s).`);
+      currentIntervalSeconds = secs;
+      logMessage(`Custom poll frequency updated to every ${currentIntervalSeconds} second(s).`);
+      updateStatusBadgeText();
+      resetPollTimer();
+      saveSettings();
+    }
+
+    function updateStatusBadgeText() {
+      if (!isMonitoring) return;
+      const statusText = document.getElementById('monitorStatusText');
+      if (statusText) {
+        statusText.textContent = `Monitoring (${currentIntervalSeconds}s interval)`;
+      }
+    }
+
+    function startPollTimer() {
+      clearInterval(pollTimer);
+      if (!isMonitoring) return;
+      pollTimer = setInterval(() => {
+        if (favorites.length > 0) {
+          logMessage(`Polling ${favorites.length} favorite creator(s) feeds...`);
+        }
+      }, currentIntervalSeconds * 1000);
+    }
+
+    function resetPollTimer() {
+      if (isMonitoring) {
+        startPollTimer();
+      }
     }
 
     function exportFullConfig() {
@@ -657,8 +810,28 @@
     }
 
     window.onload = function() {
-      fetchDemoData();
+      const hasSaved = loadSettings();
+      if (!hasSaved || subscriptions.length === 0) {
+        fetchDemoData();
+      } else {
+        logMessage(`Loaded saved configuration (${subscriptions.length} subscriptions, ${favorites.length} favorites).`);
+        renderSubscriptions();
+      }
       renderFavorites();
+      
+      // Apply correct initial UI state based on loaded isMonitoring setting
+      const badge = document.getElementById('monitorStatusBadge');
+      const btn = document.getElementById('toggleMonitorBtn');
+      if (isMonitoring) {
+        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span id="monitorStatusText" class="text-emerald-400">Monitoring (${currentIntervalSeconds}s interval)</span>`;
+        btn.innerHTML = `<i class="fa-solid fa-stop"></i> Stop Monitor`;
+        btn.className = "bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2 pulse-ring";
+        startPollTimer();
+      } else {
+        badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="monitorStatusText" class="text-slate-400">Monitoring Paused</span>`;
+        btn.innerHTML = `<i class="fa-solid fa-play"></i> Start Monitor`;
+        btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2";
+      }
     };
   </script>
 </body>
