@@ -1,11 +1,89 @@
-<!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Subscriptions & Webhook Tracker</title>
+<div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Option 1: Raw Text / Links / Handles</label>
+            <textarea id="rawPasteInput" rows="4" placeholder="Paste text or channel URLs/handles here..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono"></textarea>
+            <button onclick="parseRawPaste()" class="mt-2 w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2 rounded-lg text-xs transition">
+              Extract & Add All Channels From Text
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Guide Modal -->
+    <div id="tokenModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+        <button onclick="closeTokenModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-400"></i> How to Get an OAuth Bearer Token
+        </h3>
+        <p class="text-xs text-slate-400 mb-4">Follow these 3 quick steps using Google's OAuth Playground:</p>
+
+        <ol class="space-y-3 text-xs text-slate-300 list-decimal list-inside bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <li>
+            Open <a href="https://developers.google.com/oauthplayground" target="_blank" class="text-red-400 underline font-semibold">Google OAuth 2.0 Playground</a> in a new tab.
+          </li>
+          <li>
+            In Step 1 on the left sidebar, scroll to <strong>YouTube Data API v3</strong>, expand it, check <code class="text-amber-300">.../auth/youtube.readonly</code>, and click <strong>Authorize APIs</strong>.
+          </li>
+          <li>
+            Sign in with your Google account, then in Step 2 click <strong>Exchange authorization code for tokens</strong>. Copy the <strong>Access token</strong> (starts with <code class="text-emerald-400">ya29...</code>) and paste it below!
+          </li>
+        </ol>
+
+        <div class="mt-4 space-y-2">
+          <input type="password" id="pastedBearerToken" placeholder="Paste token starting with ya29..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono">
+          <button onclick="submitPastedToken()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg text-xs transition">
+            Apply Token & Fetch Subscriptions
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Subscriptions Modal -->
+    <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+        <button onclick="closeImportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-file-import text-red-500"></i> Import Subscriptions
+        </h3>
+        <p class="text-xs text-slate-400 mb-4">Choose an option below to import your full YouTube channel list:</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Import YouTube OPML Subscription File</label>
+            <input type="file" id="opmlFileInput" accept=".opml,.xml" onchange="handleOPMLFile(event)" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer">
+          </div>
+
+          <div class="border-t border-slate-800 pt-3">
+            <label class="block text-xs font-semibold text-slate-300 mb-1">List of Channel IDs (UC... per line)</label>
+            <textarea id="channelListInput" rows="3" placeholder="UCQchqkcCEDq3evCC0yKQKzw&#10;UCX6OQ3DkcsbYNE6H8uQQuVA" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono"></textarea>
+            <button onclick="processChannelListInput()" class="mt-2 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs border border-slate-700 transition">
+              Process Channel List
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Preview Modal -->
+    <div id="videoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-3xl shadow-2xl relative flex flex-col">
+        <button onclick="closeVideoModal()" class="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-500 transition shadow-lg z-10">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div id="videoModalContainer" class="w-full aspect-video rounded-xl overflow-hidden bg-black"></div>
+      </div>
+    </div>
+
+  <!-- Include Tailwind CSS CDN and Font Awesome before tailwind.config -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -26,18 +104,23 @@
   <style>
     /* Custom Scrollbar Styling */
     ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #0f172a;
+      background: #090d16;
     }
     ::-webkit-scrollbar-thumb {
-      background: #334155;
+      background: #1e293b;
       border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
+      background: #334155;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .pulse-ring {
       box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
@@ -50,36 +133,36 @@
     }
   </style>
 </head>
-<body class="h-full flex flex-col font-sans antialiased text-slate-200">
+<body class="h-full flex flex-col font-sans antialiased text-slate-200 bg-slate-950 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))]">
 
   <!-- Header -->
-  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-md">
+  <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-30 shadow-xl">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <div class="bg-red-600 p-2 rounded-xl text-white shadow-lg shadow-red-900/30">
+        <div class="bg-gradient-to-tr from-red-600 to-rose-500 p-2.5 rounded-2xl text-white shadow-lg shadow-red-600/30">
           <i class="fa-brands fa-youtube text-2xl"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
             YT Webhook Dispatcher
-            <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-medium">Live Feed</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">v2.0 Live</span>
           </h1>
-          <p class="text-xs text-slate-400">Monitor your favorite YouTube creators and trigger Webhook alerts</p>
+          <p class="text-xs text-slate-400">Monitor YouTube creators & trigger Discord/Webhook alerts</p>
         </div>
       </div>
 
       <!-- Live Monitoring Status Badge & OAuth Sign In -->
       <div class="flex items-center gap-3">
-        <button id="googleOAuthBtn" onclick="authenticateGoogleOAuth()" class="bg-white hover:bg-slate-100 text-slate-900 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-2 border border-slate-300">
-          <i class="fa-brands fa-google text-red-500 text-sm"></i>
+        <button id="googleOAuthBtn" onclick="authenticateGoogleOAuth()" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-md flex items-center gap-2">
+          <i class="fa-brands fa-google text-red-400 text-sm"></i>
           <span id="oauthBtnText">Connect / Import Subs</span>
         </button>
 
-        <div id="monitorStatusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-400">
+        <div id="monitorStatusBadge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium text-slate-400 shadow-inner">
           <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
           <span>Monitoring Idle</span>
         </div>
-        <button id="toggleMonitorBtn" onclick="toggleMonitoring()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2">
+        <button id="toggleMonitorBtn" onclick="toggleMonitoring()" class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-2">
           <i class="fa-solid fa-play"></i> Start Monitor
         </button>
       </div>
@@ -93,21 +176,21 @@
     <div class="lg:col-span-5 flex flex-col gap-6">
       
       <!-- API Settings Card -->
-      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+      <section class="glass-card rounded-2xl p-5 shadow-xl">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
           <span class="flex items-center gap-2"><i class="fa-solid fa-key text-red-500"></i> YouTube API Settings</span>
-          <button onclick="exportFullConfig()" title="Export Backup JSON" class="text-xs text-slate-400 hover:text-white"><i class="fa-solid fa-download mr-1"></i> Export</button>
+          <button onclick="exportFullConfig()" title="Export Backup JSON" class="text-xs text-slate-400 hover:text-white transition"><i class="fa-solid fa-download mr-1"></i> Export</button>
         </h2>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">YouTube Data API v3 Key</label>
-            <input type="password" id="youtubeApiKey" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors">
+            <input type="password" id="youtubeApiKey" placeholder="AIzaSy..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors font-mono">
           </div>
           <div>
             <label class="block text-xs text-slate-400 mb-1">Channel ID, Handle (@username), or Custom URL</label>
             <div class="flex gap-2">
-              <input type="text" id="userChannelId" value="UCQchqkcCEDq3evCC0yKQKzw" placeholder="e.g. @mkbhd, MrBeast, or UC..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
-              <button onclick="fetchSubscriptionsFromAPI()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap">
+              <input type="text" id="userChannelId" value="UCQchqkcCEDq3evCC0yKQKzw" placeholder="e.g. @mkbhd, MrBeast, or UC..." class="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <button onclick="fetchSubscriptionsFromAPI()" class="bg-red-600 hover:bg-red-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-red-900/30">
                 <i class="fa-solid fa-cloud-arrow-down"></i> Load API Subs
               </button>
             </div>
@@ -116,21 +199,23 @@
       </section>
 
       <!-- Webhook Config Card -->
-      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+      <section class="glass-card rounded-2xl p-5 shadow-xl">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
           <span class="flex items-center gap-2"><i class="fa-solid fa-bolt text-amber-400"></i> Webhook & Alert Settings</span>
-          <button onclick="toggleAdvancedSettings()" class="text-xs text-slate-400 hover:text-amber-400"><i class="fa-solid fa-sliders"></i> Options</button>
+          <button onclick="toggleAdvancedSettings()" class="text-[11px] text-red-400 hover:text-red-300 font-semibold flex items-center gap-1 transition">
+            <i class="fa-solid fa-sliders"></i> <span id="advSettingBtnText">More Settings</span>
+          </button>
         </h2>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Webhook Target URL (Discord / Slack / Custom)</label>
-            <input type="url" id="webhookUrl" value="https://discord.com/api/webhooks/1565748100042068110/1vGcgrVBHmmRN4UHGeAMOYc26WFHMRQpSIrYARv6R0VC8qjDiJJn8ro9ahoY2LKhdFqQ" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-red-500 transition-colors">
+            <input type="url" id="webhookUrl" value="https://discord.com/api/webhooks/1565748100042068110/1vGcgrVBHmmRN4UHGeAMOYc26WFHMRQpSIrYARv6R0VC8qjDiJJn8ro9ahoY2LKhdFqQ" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 transition-colors font-mono">
           </div>
 
           <div class="grid grid-cols-2 gap-3 pt-1">
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Poll Frequency</label>
-              <select id="pollInterval" onchange="updatePollFrequency()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <select id="pollInterval" onchange="updatePollFrequency()" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
                 <option value="60">Every 1 min</option>
                 <option value="180" selected>Every 3 mins</option>
                 <option value="300">Every 5 mins</option>
@@ -139,7 +224,7 @@
             </div>
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Discord Format</label>
-              <select id="webhookFormat" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <select id="webhookFormat" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
                 <option value="embed" selected>Rich Embed Card</option>
                 <option value="plain">Plain Text Link</option>
               </select>
@@ -149,45 +234,86 @@
           <!-- Title Filters -->
           <div>
             <label class="block text-[11px] text-slate-400 mb-1">Keyword Title Filters (Comma-separated, optional)</label>
-            <input type="text" id="keywordFilter" placeholder="e.g. #Shorts, Review, Unboxing (Leave empty for all)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+            <input type="text" id="keywordFilter" placeholder="e.g. #Shorts, Review, Unboxing" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+          </div>
+
+          <!-- Advanced Settings Drawer -->
+          <div id="advancedSettingsDrawer" class="hidden border-t border-slate-800/80 pt-3 mt-3 space-y-3 bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+            <h3 class="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-gear text-red-500"></i> Advanced Customization
+            </h3>
+
+            <!-- Custom Bot Username & Avatar -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-1">Bot Username</label>
+                <input type="text" id="customBotName" placeholder="YouTube Dispatcher" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-1">Embed Color</label>
+                <select id="embedColorHex" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                  <option value="16711680" selected>Red (#FF0000)</option>
+                  <option value="5763719">Emerald (#57F287)</option>
+                  <option value="3447003">Electric Blue (#3498DB)</option>
+                  <option value="15844367">Gold (#F1C40F)</option>
+                  <option value="10181046">Purple (#9B59B6)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Ping Roles / Mentions -->
+            <div>
+              <label class="block text-[10px] text-slate-400 mb-1">Ping / Mention Option</label>
+              <select id="pingOption" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                <option value="none" selected>None (Silent Notification)</option>
+                <option value="everyone">@everyone</option>
+                <option value="here">@here</option>
+              </select>
+            </div>
+
+            <!-- Custom Bot Avatar URL -->
+            <div>
+              <label class="block text-[10px] text-slate-400 mb-1">Custom Bot Avatar Image URL (Optional)</label>
+              <input type="url" id="customBotAvatar" placeholder="https://example.com/icon.png" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono">
+            </div>
           </div>
 
           <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label class="flex items-center gap-2 cursor-pointer text-slate-300">
               <input type="checkbox" id="autoCheck" checked class="rounded bg-slate-950 border-slate-800 text-red-600 focus:ring-0 focus:ring-offset-0">
               Auto-poll feeds
             </label>
-            <button onclick="testWebhook()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 transition">
-              <i class="fa-solid fa-paper-plane mr-1"></i> Send Test Payload
+            <button onclick="testWebhook()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-paper-plane text-amber-400"></i> Send Test Payload
             </button>
           </div>
         </div>
       </section>
 
       <!-- Favorites / Watched Channels -->
-      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl flex-1 flex flex-col min-h-[300px]">
+      <section class="glass-card rounded-2xl p-5 shadow-xl flex-1 flex flex-col min-h-[320px]">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
               <i class="fa-solid fa-star text-amber-400"></i> Favorite Creators
             </h2>
-            <p class="text-xs text-slate-400">Only channels in this list will trigger webhook events</p>
+            <p class="text-xs text-slate-400">Only creators in this list will trigger alerts</p>
           </div>
-          <span id="favCount" class="text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-1 rounded-md">0 Favorite</span>
+          <span id="favCount" class="text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg">0 Favorites</span>
         </div>
 
         <!-- Add Manual Channel -->
         <div class="flex gap-2 mb-4">
-          <input type="text" id="manualChannelId" placeholder="Channel ID (UC...)" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
-          <button onclick="addManualChannel()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
-            <i class="fa-solid fa-plus mr-1"></i> Add
+          <input type="text" id="manualChannelId" placeholder="Channel ID (UC...) or @handle" class="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+          <button onclick="addManualChannel()" class="bg-red-600 hover:bg-red-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition">
+            <i class="fa-solid fa-plus"></i> Add
           </button>
         </div>
 
         <!-- Favorites List -->
-        <div id="favoritesList" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[300px]">
+        <div id="favoritesList" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[280px]">
           <div class="text-center py-10 text-slate-500 text-xs">
-            No favorite creators added yet.<br>Click "Add Favorite" on any subscription channel!
+            No favorite creators added yet.<br>Click "+ Favorite" on any subscription channel below!
           </div>
         </div>
       </section>
@@ -198,105 +324,78 @@
     <div class="lg:col-span-7 flex flex-col gap-6">
 
       <!-- YouTube Subscriptions Explorer -->
-      <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl flex-1 flex flex-col">
+      <section class="glass-card rounded-2xl p-5 shadow-xl flex-1 flex flex-col min-h-[420px]">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h2 class="text-base font-bold text-white flex items-center gap-2">
               <i class="fa-solid fa-list-check text-red-500"></i> Subscriptions List
             </h2>
-            <p class="text-xs text-slate-400">Click "+ Favorite" button to track any creator</p>
+            <p class="text-xs text-slate-400">Click "+ Favorite" button to watch any channel</p>
           </div>
 
           <!-- Action Buttons -->
+        <div class="flex items-center gap-2">
+          <button onclick="openImportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-import text-red-400"></i> Import OPML / IDs
+          </button>
+          <button onclick="fetchDemoData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Demo Data
+          </button>
+        </div>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3">
+          <div class="sm:col-span-7 relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+            <input type="text" id="searchSubs" oninput="renderSubscriptions()" placeholder="Search channels..." class="w-full bg-slate-950/80 border border-slate-800/80 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+          </div>
+          <div class="sm:col-span-5 flex gap-2">
+            <select id="subFilterType" onchange="renderSubscriptions()" class="w-full bg-slate-950/80 border border-slate-800/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+              <option value="all" selected>All Channels</option>
+              <option value="favs">Favorites Only</option>
+              <option value="nonfavs">Non-Favorites</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Subscriptions Render Container -->
+        <div id="subscriptionsList" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[380px]">
+          <!-- Dynamic Subscriptions Rendered Here -->
+        </div>
+      </section>
+
+      <!-- Logs & History Terminal Card -->
+      <section class="glass-card rounded-2xl p-5 shadow-xl flex flex-col h-[280px]">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800/80 pb-2">
           <div class="flex items-center gap-2">
-            <button onclick="openImportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
-              <i class="fa-solid fa-file-import"></i> Import OPML/IDs
+            <button onclick="switchTab('log')" id="tabLogBtn" class="text-xs font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">
+              <i class="fa-solid fa-terminal text-emerald-400 mr-1"></i> Live Activity Log
             </button>
-            <button onclick="fetchDemoData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
-              <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Demo Data
+            <button onclick="switchTab('history')" id="tabHistoryBtn" class="text-xs font-bold text-slate-400 hover:text-white px-3 py-1 rounded-lg transition">
+              <i class="fa-solid fa-clock-history text-amber-400 mr-1"></i> Dispatch History (<span id="historyCount">0</span>)
             </button>
+          </div>
+          <button onclick="clearConsoleLog()" class="text-[11px] text-slate-500 hover:text-slate-300">Clear</button>
+        </div>
+
+        <!-- Log Panel -->
+        <div id="logTabContent" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-1 text-slate-400 bg-slate-950/90 rounded-xl p-3 border border-slate-900" id="consoleLog">
+          <div id="consoleLog">
+            <div class="text-slate-600">[System] Initializing YouTube Webhook Tracker...</div>
           </div>
         </div>
 
-        <!-- Search Bar & Filters -->
-        <div class="flex gap-2 mb-3">
-          <div class="relative flex-1">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
-            <input type="text" id="searchSubs" oninput="renderSubscriptions()" placeholder="Search subscriptions..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+        <!-- History Panel -->
+        <div id="historyTabContent" class="hidden flex-1 overflow-y-auto text-xs space-y-2 bg-slate-950/90 rounded-xl p-3 border border-slate-900">
+          <div id="webhookHistoryLog" class="space-y-1.5">
+            <div class="text-slate-600 text-center py-6">No webhooks dispatched yet during this session.</div>
           </div>
-          <select id="subFilterType" onchange="renderSubscriptions()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-red-500">
-            <option value="all">All Channels</option>
-            <option value="favs">Favorites Only</option>
-            <option value="nonfavs">Non-Favorites</option>
-          </select>
-          <button onclick="favoriteAllFiltered()" title="Add all filtered to Favorites" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-2.5 py-2 rounded-lg text-xs font-semibold border border-slate-700 transition">
-            <i class="fa-solid fa-star text-xs mr-1"></i> Add All
-          </button>
         </div>
+      </section>
 
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Option A: Upload Google Takeout OPML file</label>
-          <input type="file" id="opmlFileInput" accept=".xml,.opml" onchange="handleOPMLFile(event)" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-500 cursor-pointer">
-        </div>
-
-        <div class="relative flex py-1 items-center">
-          <div class="flex-grow border-t border-slate-800"></div>
-          <span class="flex-shrink mx-4 text-slate-600 text-xs uppercase">or</span>
-          <div class="flex-grow border-t border-slate-800"></div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Option B: Paste YouTube Channel IDs or URLs (One per line)</label>
-          <textarea id="channelListInput" rows="4" placeholder="UCX6OQ3DkcsbYNE6H8uQQuVA&#10;https://www.youtube.com/channel/UC-lHJZR3Gqxm24_Vd_AJ5Yw" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono"></textarea>
-        </div>
-
-        <button onclick="processChannelListInput()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 rounded-lg text-sm transition">
-          Parse & Add Channels
-        </button>
-      </div>
     </div>
-  </div>
-
-  <!-- Notification Toast -->
-  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
-    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
-    <span id="toastMessage" class="text-xs font-medium">Notification message</span>
-  </div>
-
-  <!-- Video Preview Modal -->
-  <div id="videoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-2xl shadow-2xl relative">
-      <button onclick="closeVideoModal()" class="absolute -top-3 -right-3 bg-red-600 hover:bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition">
-        <i class="fa-solid fa-xmark text-sm"></i>
-      </button>
-      <div id="videoModalContainer" class="aspect-video w-full rounded-xl overflow-hidden bg-black">
-        <!-- iframe dynamically injected -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Subscription Import Modal -->
-  <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
-      <button onclick="closeImportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
-        <i class="fa-solid fa-xmark text-lg"></i>
-      </button>
-      <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
-        <i class="fa-solid fa-file-import text-red-500"></i> Import Subscriptions
-      </h3>
-      <p class="text-xs text-slate-400 mb-4">Upload an OPML takeout file or paste raw text containing channel links.</p>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Option 1: Raw Text / Links / Handles</label>
-          <textarea id="rawPasteInput" rows="4" placeholder="Paste text or channel URLs/handles here..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono"></textarea>
-          <button onclick="parseRawPaste()" class="mt-2 w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2 rounded-lg text-xs transition">
-            Extract & Add All Channels From Text
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  </main>
 
   <script>
     // State management
@@ -321,27 +420,27 @@
 
     // Direct OAuth & Importer Fallback
     function authenticateGoogleOAuth() {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('flowName')) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+      openTokenModal();
+    }
 
-      const userChoice = prompt(
-        "OAuth Redirect detected.\n\n" +
-        "Option 1: Paste an OAuth Bearer Token (e.g., from OAuth Playground)\n" +
-        "Option 2: Leave empty and click OK to open the Subscription Import Tool:",
-        oauthAccessToken || ""
-      );
+    function openTokenModal() {
+      document.getElementById('tokenModal').classList.remove('hidden');
+    }
 
-      if (userChoice !== null) {
-        if (userChoice.trim().length > 10) {
-          oauthAccessToken = userChoice.trim();
-          logConsole('[OAuth] Access token provided manually. Fetching user subscriptions...');
-          fetchSubscriptionsWithOAuth(oauthAccessToken);
-        } else {
-          openImportModal();
-        }
+    function closeTokenModal() {
+      document.getElementById('tokenModal').classList.add('hidden');
+    }
+
+    function submitPastedToken() {
+      const token = document.getElementById('pastedBearerToken').value.trim();
+      if (!token) {
+        showToast('Please paste a valid OAuth token', 'error');
+        return;
       }
+      oauthAccessToken = token;
+      closeTokenModal();
+      logConsole('[OAuth] Using provided Access Token to fetch subscriptions...');
+      fetchSubscriptionsWithOAuth(oauthAccessToken);
     }
 
     async function fetchSubscriptionsWithOAuth(token) {
@@ -405,28 +504,49 @@
       );
     }
 
+    function toggleAdvancedSettings() {
+      const drawer = document.getElementById('advancedSettingsDrawer');
+      const text = document.getElementById('advSettingBtnText');
+      if (drawer.classList.contains('hidden')) {
+        drawer.classList.remove('hidden');
+        text.textContent = 'Hide Settings';
+      } else {
+        drawer.classList.add('hidden');
+        text.textContent = 'More Settings';
+      }
+    }
+
     // Dispatch webhook payload to Discord or webhook receiver
     async function dispatchWebhook(channelName, videoTitle, videoLink, videoId, iconUrl) {
       const webhookUrl = document.getElementById('webhookUrl').value.trim();
       const format = document.getElementById('webhookFormat').value;
+      const botName = document.getElementById('customBotName')?.value.trim() || "YouTube Dispatcher";
+      const botAvatar = document.getElementById('customBotAvatar')?.value.trim() || "https://www.youtube.com/s/desktop/f1e7ff8a/img/favicon_144x144.png";
+      const embedColor = parseInt(document.getElementById('embedColorHex')?.value || '16711680');
+      const pingOpt = document.getElementById('pingOption')?.value || 'none';
 
       if (!webhookUrl) {
         logConsole('[Webhook Error] No Webhook URL configured.', 'error');
         return;
       }
 
+      let pingPrefix = '';
+      if (pingOpt === 'everyone') pingPrefix = '@everyone ';
+      else if (pingOpt === 'here') pingPrefix = '@here ';
+
       let payload = {};
       if (format === 'embed') {
         payload = {
-          username: "YouTube Dispatcher",
-          avatar_url: "https://www.youtube.com/s/desktop/f1e7ff8a/img/favicon_144x144.png",
+          username: botName,
+          avatar_url: botAvatar,
+          content: pingPrefix ? pingPrefix : undefined,
           embeds: [{
             title: videoTitle,
             url: videoLink,
-            color: 16711680, // Red
+            color: embedColor,
             author: {
               name: channelName,
-              icon_url: iconUrl || "https://www.youtube.com/s/desktop/f1e7ff8a/img/favicon_144x144.png"
+              icon_url: iconUrl || botAvatar
             },
             image: {
               url: videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''
@@ -439,7 +559,9 @@
         };
       } else {
         payload = {
-          content: `**${channelName}** uploaded a new video!\n**${videoTitle}**\n${videoLink}`
+          username: botName,
+          avatar_url: botAvatar,
+          content: `${pingPrefix}**${channelName}** uploaded a new video!\n**${videoTitle}**\n${videoLink}`
         };
       }
 
@@ -617,6 +739,10 @@
       const keywordFilter = document.getElementById('keywordFilter').value.trim();
       const webhookFormat = document.getElementById('webhookFormat').value;
       const pollInterval = document.getElementById('pollInterval').value;
+      const customBotName = document.getElementById('customBotName')?.value.trim() || '';
+      const customBotAvatar = document.getElementById('customBotAvatar')?.value.trim() || '';
+      const embedColorHex = document.getElementById('embedColorHex')?.value || '16711680';
+      const pingOption = document.getElementById('pingOption')?.value || 'none';
 
       localStorage.setItem('yt_api_key', apiKey);
       localStorage.setItem('yt_user_channel_id', userChanId);
@@ -624,6 +750,10 @@
       localStorage.setItem('yt_keyword_filter', keywordFilter);
       localStorage.setItem('yt_webhook_format', webhookFormat);
       localStorage.setItem('yt_poll_interval', pollInterval);
+      localStorage.setItem('yt_bot_name', customBotName);
+      localStorage.setItem('yt_bot_avatar', customBotAvatar);
+      localStorage.setItem('yt_embed_color', embedColorHex);
+      localStorage.setItem('yt_ping_option', pingOption);
       localStorage.setItem('yt_subscriptions', JSON.stringify(subscriptions));
       localStorage.setItem('yt_favorites', JSON.stringify(favorites));
       localStorage.setItem('yt_seen_videos', JSON.stringify(Array.from(seenVideoIds)));
@@ -636,6 +766,10 @@
       const savedKeywords = localStorage.getItem('yt_keyword_filter');
       const savedFormat = localStorage.getItem('yt_webhook_format');
       const savedPoll = localStorage.getItem('yt_poll_interval');
+      const savedBotName = localStorage.getItem('yt_bot_name');
+      const savedBotAvatar = localStorage.getItem('yt_bot_avatar');
+      const savedEmbedColor = localStorage.getItem('yt_embed_color');
+      const savedPingOption = localStorage.getItem('yt_ping_option');
       const savedSubs = localStorage.getItem('yt_subscriptions');
       const savedFavs = localStorage.getItem('yt_favorites');
       const savedSeen = localStorage.getItem('yt_seen_videos');
@@ -646,6 +780,10 @@
       if (savedKeywords !== null) document.getElementById('keywordFilter').value = savedKeywords;
       if (savedFormat !== null) document.getElementById('webhookFormat').value = savedFormat;
       if (savedPoll !== null) document.getElementById('pollInterval').value = savedPoll;
+      if (savedBotName !== null && document.getElementById('customBotName')) document.getElementById('customBotName').value = savedBotName;
+      if (savedBotAvatar !== null && document.getElementById('customBotAvatar')) document.getElementById('customBotAvatar').value = savedBotAvatar;
+      if (savedEmbedColor !== null && document.getElementById('embedColorHex')) document.getElementById('embedColorHex').value = savedEmbedColor;
+      if (savedPingOption !== null && document.getElementById('pingOption')) document.getElementById('pingOption').value = savedPingOption;
 
       if (savedSubs) {
         try { subscriptions = JSON.parse(savedSubs); } catch (e) { subscriptions = []; }
@@ -737,11 +875,13 @@
     }
 
     function openImportModal() {
-      document.getElementById('importModal').classList.remove('hidden');
+      const modal = document.getElementById('importModal');
+      if (modal) modal.classList.remove('hidden');
     }
 
     function closeImportModal() {
-      document.getElementById('importModal').classList.add('hidden');
+      const modal = document.getElementById('importModal');
+      if (modal) modal.classList.add('hidden');
     }
 
     function handleOPMLFile(event) {
@@ -790,47 +930,6 @@
       closeImportModal();
     }
 
-    async function parseRawPaste() {
-      const raw = document.getElementById('rawPasteInput').value;
-      if (!raw.trim()) {
-        showToast('Please paste YouTube page text or links first', 'error');
-        return;
-      }
-
-      logConsole('[Import] Parsing raw input text for channel links and IDs...');
-      
-      const channelIdMatches = raw.match(/UC[a-zA-Z0-9_-]{22}/g) || [];
-      const handleMatches = raw.match(/@([a-zA-Z0-9_.-]+)/g) || [];
-      
-      const uniqueIds = Array.from(new Set(channelIdMatches));
-      let addedCount = 0;
-
-      uniqueIds.forEach(id => {
-        if (!subscriptions.some(s => s.id === id)) {
-          addSubscriptionToList({ id, name: `Channel (${id.substring(0, 8)})`, icon: '' });
-          addedCount++;
-        }
-      });
-
-      const apiKey = document.getElementById('youtubeApiKey').value.trim();
-      if (apiKey && handleMatches.length > 0) {
-        const uniqueHandles = Array.from(new Set(handleMatches)).slice(0, 15);
-        for (const handle of uniqueHandles) {
-          const resolvedId = await resolveChannelId(handle, apiKey);
-          if (resolvedId && !subscriptions.some(s => s.id === resolvedId)) {
-            addSubscriptionToList({ id: resolvedId, name: handle, icon: '' });
-            addedCount++;
-          }
-        }
-      }
-
-      saveState();
-      renderSubscriptions();
-      renderFavorites();
-      showToast(`Successfully extracted and added ${addedCount} channels!`);
-      closeImportModal();
-    }
-
     function logConsole(message, type = 'info') {
       const consoleLog = document.getElementById('consoleLog');
       if (!consoleLog) return;
@@ -843,45 +942,57 @@
       consoleLog.scrollTop = consoleLog.scrollHeight;
     }
 
-    function showToast(msg, type = 'success') {
-      const toast = document.getElementById('toast');
-      const toastMessage = document.getElementById('toastMessage');
-      const toastIcon = document.getElementById('toastIcon');
-      if (!toast) return;
-
-      toastMessage.textContent = msg;
-      if (type === 'error') {
-        toastIcon.className = 'fa-solid fa-circle-xmark text-red-400 text-lg';
-      } else if (type === 'info') {
-        toastIcon.className = 'fa-solid fa-circle-info text-amber-400 text-lg';
-      } else {
-        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
-      }
-
-      toast.classList.remove('translate-y-20', 'opacity-0');
-      setTimeout(() => {
-        toast.classList.add('translate-y-20', 'opacity-0');
-      }, 3500);
+    function showToast(message, type = 'info') {
+      logConsole(`[Notice] ${message}`, type === 'error' ? 'error' : 'info');
     }
 
     function escapeHtml(str) {
       if (!str) return '';
-      return str.replace(/[&<>"']/g, function(m) {
+      return str.replace(/[&<>"']/g, match => {
         return {
           '&': '&amp;',
           '<': '&lt;',
           '>': '&gt;',
           '"': '&quot;',
-          "'": '&#039;'
-        }[m];
+          "'": '&#39;'
+        }[match];
       });
+    }
+
+    function switchTab(tab) {
+      activeConsoleTab = tab;
+      const logBtn = document.getElementById('tabLogBtn');
+      const historyBtn = document.getElementById('tabHistoryBtn');
+      const logContent = document.getElementById('logTabContent');
+      const historyContent = document.getElementById('historyTabContent');
+
+      if (tab === 'log') {
+        logBtn.className = 'text-xs font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-slate-700';
+        historyBtn.className = 'text-xs font-bold text-slate-400 hover:text-white px-3 py-1 rounded-lg transition';
+        logContent.classList.remove('hidden');
+        historyContent.classList.add('hidden');
+      } else {
+        historyBtn.className = 'text-xs font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-slate-700';
+        logBtn.className = 'text-xs font-bold text-slate-400 hover:text-white px-3 py-1 rounded-lg transition';
+        historyContent.classList.remove('hidden');
+        logContent.classList.add('hidden');
+        renderWebhookHistory();
+      }
+    }
+
+    function clearConsoleLog() {
+      const consoleLog = document.getElementById('consoleLog');
+      if (consoleLog) consoleLog.innerHTML = '<div class="text-slate-600">[System] Log cleared.</div>';
     }
 
     function renderSubscriptions() {
       const container = document.getElementById('subscriptionsList');
       if (!container) return;
-      const query = document.getElementById('searchSubs').value.toLowerCase().trim();
-      const filterType = document.getElementById('subFilterType').value;
+      const searchInput = document.getElementById('searchSubs');
+      const filterSelect = document.getElementById('subFilterType');
+
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const filterType = filterSelect ? filterSelect.value : 'all';
 
       let filtered = subscriptions.filter(s => s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
 
@@ -892,7 +1003,17 @@
       }
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-center py-10 text-slate-500 text-xs">No matching channels found.</div>`;
+        container.innerHTML = `
+          <div class="text-center py-12 px-4 border border-dashed border-slate-800 rounded-2xl bg-slate-950/40">
+            <i class="fa-brands fa-youtube text-3xl text-slate-700 mb-2"></i>
+            <p class="text-xs text-slate-400 font-semibold">No Subscriptions Displayed</p>
+            <p class="text-[11px] text-slate-500 max-w-sm mx-auto mt-1 mb-4">Click "Load API Subs", "Connect / Import Subs", or import an OPML file.</p>
+            <div class="flex justify-center gap-2">
+              <button onclick="fetchSubscriptionsFromAPI()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">Load API Subs</button>
+              <button onclick="openImportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 transition">Import File/List</button>
+            </div>
+          </div>
+        `;
         return;
       }
 
