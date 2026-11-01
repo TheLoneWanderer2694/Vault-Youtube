@@ -33,5 +33,5 @@ uses: actions/checkout@v4
     run: |
       git config --global user.name "github-actions[bot]"
       git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      git add last_seen.json || true
-      git diff --staged --quiet || (git commit -m "update cache [skip ci]" && git push)
+      git add last_seen.json
+      git status --porcelain | grep -q . && git commit -m "update cache [skip ci]" && git push || echo "No changes to commit"
