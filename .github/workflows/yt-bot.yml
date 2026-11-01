@@ -1,37 +1,40 @@
 name: 24-7 YouTube Webhook Bot
 
 on:
-schedule:
-- cron: '*/5 * * * *'
-workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 permissions:
-contents: write
+  contents: write
 
 jobs:
-run-notifier:
-runs-on: ubuntu-latest
-steps:
-- name: Check out repo code
-uses: actions/checkout@v4
+  check-youtube:
+    runs-on: ubuntu-latest
 
-  - name: Set up Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.x'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-  - name: Install dependencies
-    run: pip install requests feedparser
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-  - name: Run Notifier Script
-    env:
-      WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-      FAVORITE_CHANNELS: ${{ secrets.FAVORITE_CHANNELS }}
-    run: python yt_notifier.py
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests feedparser
 
-  - name: Persist Video Cache
-    run: |
-      git config --global user.name "github-actions[bot]"
-      git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      git add last_seen.json
-      git status --porcelain | grep -q . && git commit -m "update cache [skip ci]" && git push || echo "No changes to commit"
+      - name: Run YouTube Bot Script
+        env:
+          WEBHOOK_URL: "${{ secrets.WEBHOOK_URL }}"
+          FAVORITE_CHANNELS: "${{ secrets.FAVORITE_CHANNELS }}"
+        run: python yt_notifier.py
+
+      - name: Commit Updated Baseline State
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_seen_videos.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "update video baseline cache [skip ci]" && git push)
