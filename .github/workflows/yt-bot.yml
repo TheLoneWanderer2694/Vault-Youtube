@@ -5,9 +5,6 @@ on:
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   check-youtube:
     runs-on: ubuntu-latest
@@ -31,11 +28,3 @@ jobs:
           WEBHOOK_URL: "${{ secrets.WEBHOOK_URL }}"
           FAVORITE_CHANNELS: "${{ secrets.FAVORITE_CHANNELS }}"
         run: python3 yt_notifier.py
-
-      - name: Commit and Push Updated Baseline State
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          touch last_seen_videos.json
-          git add last_seen_videos.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "update video baseline cache [skip ci]" && git push origin HEAD:${{ github.ref_name }})
