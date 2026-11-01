@@ -1,25 +1,9 @@
 import os
-import json
-import time
 import requests
 import feedparser
 
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 FAVORITE_CHANNELS = os.environ.get("FAVORITE_CHANNELS", "")
-CACHE_FILE = "last_seen_videos.json"
-
-def load_cache():
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error reading cache: {e}")
-    return {}
-
-def save_cache(cache):
-    with open(CACHE_FILE, "w") as f:
-        json.dump(cache, f, indent=2)
 
 def send_discord_webhook(video_title, video_link, channel_name):
     payload = {
@@ -42,9 +26,6 @@ def main():
         print("❌ No channels provided in FAVORITE_CHANNELS.")
         return
 
-    cache = load_cache()
-    updated = False
-
     for channel_id in channels:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
         feed = feedparser.parse(feed_url)
@@ -53,30 +34,16 @@ def main():
             print(f"⚠️ No entries found for channel ID: {channel_id}")
             continue
 
+        # Inspect the latest uploaded video
         latest_entry = feed.entries[0]
-        video_id = latest_entry.yt_videoid if hasattr(latest_entry, 'yt_videoid') else latest_entry.id
         video_title = latest_entry.title
         video_link = latest_entry.link
         channel_name = feed.feed.title if hasattr(feed, 'feed') and hasattr(feed.feed, 'title') else "YouTube Channel"
 
-        # First-run baseline: save without alerting
-        if channel_id not in cache:
-            print(f"📌 Setting initial baseline for {channel_name}: {video_id}")
-            cache[channel_id] = video_id
-            updated = True
-            continue
-
-        # Check for genuinely new video upload
-        if cache[channel_id] != video_id:
-            print(f"🚨 New video detected for {channel_name}: {video_title}")
-            send_discord_webhook(video_title, video_link, channel_name)
-            cache[channel_id] = video_id
-            updated = True
-        else:
-            print(f"ℹ️ No new uploads for {channel_name}.")
-
-    if updated:
-        save_cache(cache)
+        print(f"📺 Checked {channel_name}: Latest is '{video_title}'")
+        
+        # Dispatch notification (Note: Without a local cache file, this will alert on the current latest video every time it runs. Use this to verify your webhook instantly!)
+        send_discord_webhook(video_title, video_link, channel_name)
 
 if __name__ == "__main__":
     main()
