@@ -7,7 +7,7 @@ schedule:
 workflow_dispatch: # Allows manual trigger anytime from GitHub UI
 
 permissions:
-contents: write # Grants permissions to save last_seen_videos.json back to repo
+contents: write
 
 jobs:
 poll-and-dispatch:
